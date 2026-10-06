@@ -16,3 +16,6 @@ data/raw/
 
 # Sistema
 .DS_Store
+
+# Sesiones grabadas (datos crudos, se respaldan aparte)
+sessions/

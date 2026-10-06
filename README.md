@@ -82,10 +82,60 @@ arecord -D plughw:1,0 -f S16_LE -r 16000 -c 1 prueba.wav
 - Audio de referencia grabado por el equipo, no descargado.
 - Protocolo: grabar 10 s a 1, 2 y 3 m de altura, con y sin dron encendido; analizar espectrogramas.
 
+## Banco volante (Tello + micrófono USB)
+
+Primer sistema aplicado: el micrófono queda fijo y un DJI Tello vuela solo una rutina
+(ambiente con motores apagados, hover a 1-2-3-2-1 m, ambiente final) mientras se graba el
+audio sincronizado con la telemetría. Mide la ley inversa del cuadrado, el espectro del ruido
+del dron y la repetibilidad entre hovers a la misma distancia.
+
+Instalación:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+Uso, en este orden:
+
+```bash
+# 1. Encontrar el micrófono y ver qué formatos acepta
+.venv/bin/python -m soundloc.devices
+
+# 2. Verificar que la cadena es lineal y sin AGC (sin dron, ~30 s)
+.venv/bin/python -m soundloc.mic_test --device hw:CARD=<id>,DEV=0 --rate 48000
+
+# 3. Ensayar la rutina completa en simulación (sin dron ni micrófono)
+.venv/bin/python -m soundloc.bench_flight --simulate
+
+# 4. Vuelo real, con la laptop conectada al Wi-Fi del Tello
+.venv/bin/python -m soundloc.bench_flight --device hw:CARD=<id>,DEV=0 --rate 48000 --mic-height 1.0
+
+# Volver a analizar una sesión ya grabada
+.venv/bin/python -m soundloc.analyze_flight sessions/<carpeta>
+```
+
+Durante el vuelo: **ENTER = paro de emergencia** (motores apagados), **Ctrl+C = aterrizaje
+controlado**. Cada sesión se guarda en `sessions/` con el audio crudo, la telemetría, los
+tramos y un `sesion.json` con la metadata.
+
+| Módulo | Qué hace |
+|---|---|
+| `soundloc/levels.py` | RMS, dBFS, saturación, suma y resta de niveles |
+| `soundloc/recorder.py` | Grabación con `arecord` sobre `hw:`, con marcas de tiempo por bloque |
+| `soundloc/timing.py` | Sincronización del audio con el reloj de la computadora |
+| `soundloc/tello.py` | Cliente del SDK del Tello por UDP, sin reintentos |
+| `soundloc/fake_tello.py`, `fake_audio.py` | Simulador del Tello y de su ruido (el "SITL" del banco) |
+| `soundloc/mic_test.py` | Prueba de linealidad y AGC del micrófono |
+| `soundloc/bench_flight.py` | Rutina de vuelo con verificaciones de seguridad |
+| `soundloc/analyze_flight.py` | Niveles por tramo, ley inversa del cuadrado, gráficas |
+
+Pruebas: `.venv/bin/python -m pytest`
+
 ## Estado
 
-Repositorio recién iniciado. Primer entregable previsto: herramienta de análisis acústico
-(grabación, filtrado en banda, energía por ventana, comparación entre posiciones).
+Banco volante implementado y validado en simulación. Pendiente: prueba del micrófono Steren
+MOV-033 y primer vuelo real. Después: filtrado en banda y supresión de tonos de hélice.
 
 ## Regla de trabajo
 
