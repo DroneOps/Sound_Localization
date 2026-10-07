@@ -50,14 +50,21 @@ class TelloError(RuntimeError):
 class TelloClient:
     MIN_INTERVAL_S = 0.1
 
-    def __init__(self, ip=TELLO_IP, cmd_port=CMD_PORT, state_port=STATE_PORT):
+    def __init__(self, ip=TELLO_IP, cmd_port=CMD_PORT, state_port=STATE_PORT, local_port=CMD_PORT):
+        """local_port: puerto de la computadora desde el que se mandan los comandos.
+
+        Recién encendido, el Tello parece contestarle sólo al primer puerto que le habló.
+        Usar siempre el mismo (8889, como djitellopy) evita que una segunda corrida del
+        programa se quede sin respuestas. 0 = el sistema elige uno libre (simulación, pruebas).
+        """
         self.addr = (ip, cmd_port)
         self.state_port = state_port
         # Si se activa, cualquier espera de respuesta se interrumpe (lo usa la misión al abortar).
         self.cancel = None
         self.state_log = []  # (hora de llegada, estado)
         self._cmd = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._cmd.bind(("", 0))
+        self._cmd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._cmd.bind(("", local_port))
         self._state_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._state_sock.bind(("", state_port))
         self._state_sock.settimeout(0.5)
@@ -110,19 +117,38 @@ class TelloClient:
             self._drain()
             self._cmd.sendto(cmd.encode("utf-8"), self.addr)
             self._last_send = time.monotonic()
-            deadline = self._last_send + timeout
-            while True:
-                if self.cancel is not None and self.cancel.is_set():
-                    raise TelloError(f"'{cmd}' cancelado")
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    raise TelloError(f"sin respuesta a '{cmd}' en {timeout:g} s")
-                self._cmd.settimeout(min(remaining, 0.2))
-                try:
-                    data, _ = self._cmd.recvfrom(1024)
-                except socket.timeout:
-                    continue
-                return data.decode("utf-8", "replace").strip()
+            text = self._receive(self._last_send + timeout, cmd)
+            if text is None:
+                raise TelloError(f"sin respuesta a '{cmd}' en {timeout:g} s")
+            return text
+
+    def _receive(self, deadline, what):
+        """Primera respuesta de texto antes de `deadline`, o None."""
+        while True:
+            if self.cancel is not None and self.cancel.is_set():
+                raise TelloError(f"'{what}' cancelado")
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            self._cmd.settimeout(min(remaining, 0.2))
+            try:
+                data, _ = self._cmd.recvfrom(1024)
+            except socket.timeout:
+                continue
+            try:
+                text = data.decode("utf-8").strip()
+            except UnicodeDecodeError:
+                text = None
+            if not text or not text.isprintable():
+                # Paquete binario del protocolo interno del Tello (lo manda, por ejemplo,
+                # recién encendido). No es la respuesta de un comando del SDK: se ignora.
+                continue
+            return text
+
+    def wait_reply(self, timeout):
+        """Espera la respuesta de un comando cuya espera se interrumpió (por ejemplo, con Ctrl+C)."""
+        with self._lock:
+            return self._receive(time.monotonic() + timeout, "respuesta pendiente")
 
     def command(self, cmd, timeout=15.0):
         """Comando de acción: exige 'ok'. Sin reintentos."""
@@ -131,9 +157,33 @@ class TelloClient:
             raise TelloError(f"'{cmd}' respondió '{response}'")
         return response
 
+    def seconds_since_last_command(self):
+        return time.monotonic() - self._last_send
+
+    def connect(self, attempts=3, timeout=3.0):
+        """Entra al modo SDK. 'command' es idempotente, así que reintentarlo es seguro."""
+        last = None
+        for _ in range(attempts):
+            try:
+                return self.command("command", timeout=timeout)
+            except TelloError as exc:
+                last = exc
+        raise TelloError(f"el Tello no contestó a 'command' en {attempts} intentos ({last})")
+
     def query(self, cmd, timeout=5.0):
         """Consulta como 'battery?': devuelve el texto de la respuesta."""
         return self._exchange(cmd, timeout)
+
+    def rc(self, lr, fb, ud, yaw):
+        """Palancas virtuales, de −100 a 100: izquierda/derecha, adelante/atrás, arriba/abajo, giro.
+
+        A diferencia de "forward 80", no le pide al Tello medir cuánto se movió, así que
+        funciona aunque su posicionamiento no sea confiable. El SDK no contesta este
+        comando; mandarlo seguido también mantiene vivo el enlace.
+        """
+        values = [max(-100, min(100, int(v))) for v in (lr, fb, ud, yaw)]
+        self._cmd.sendto(("rc " + " ".join(map(str, values))).encode("utf-8"), self.addr)
+        self._last_send = time.monotonic()
 
     def emergency(self, repeats=3):
         """Apaga los motores al instante.

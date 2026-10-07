@@ -26,9 +26,9 @@ def test_parse_state_keeps_unknown_fields():
 def drone():
     fake = FakeTello(cmd_port=28889, state_port=28890, speed_mps=1.0)
     fake.start()
-    client = TelloClient("127.0.0.1", 28889, 28890)
+    client = TelloClient("127.0.0.1", 28889, 28890, local_port=0)
     client.start()
-    client.command("command", timeout=2)
+    client.connect()
     yield fake, client
     client.close()
     fake.stop()
@@ -80,3 +80,25 @@ def test_cancel_stops_waiting_for_a_reply(drone):
     with pytest.raises(TelloError):
         client.command("forward 300", timeout=10)
     assert time.monotonic() - started < 2.0
+
+
+def test_binary_packets_are_not_taken_as_replies():
+    """Recién encendido, el Tello puede mandar un paquete binario antes del 'ok'."""
+    import socket
+    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server.bind(("127.0.0.1", 28891))
+
+    def reply():
+        _, addr = server.recvfrom(1024)
+        server.sendto(bytes([0xCC, 0x58, 0x00, 0x7C, 0x48, 0x56, 0x09, 0x5A, 0x62, 0xFF]), addr)
+        server.sendto(b"ok", addr)
+
+    responder = threading.Thread(target=reply)
+    responder.start()
+    client = TelloClient("127.0.0.1", 28891, 28892, local_port=0)
+    try:
+        assert client.command("command", timeout=2) == "ok"
+    finally:
+        responder.join(timeout=2)
+        client.close()
+        server.close()

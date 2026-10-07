@@ -56,3 +56,50 @@ def test_clipping_is_detected():
 def test_silence_is_inconclusive():
     verdict, _ = run(record(np.zeros(24 * FS)))
     assert verdict == "NO CONCLUYENTE"
+
+
+def test_a_startup_click_does_not_hide_the_tone():
+    """Imita al códec interno de la laptop: un chasquido saturado y una cola de casi 1 s."""
+    raw = record(0.5 * generate_stimulus(FS))
+    n = int(0.9 * FS)
+    tail = 0.3 * np.exp(-np.arange(n) / (0.1 * FS)) * np.sin(2 * np.pi * 50 * np.arange(n) / FS)
+    raw[:n] = np.clip(np.round(tail * 32768), -32768, 32767).astype(np.int16)
+    raw[:20] = 32767  # unas cuantas muestras saturadas al abrir el dispositivo
+    verdict, checks = run_like_report(raw)
+    assert verdict == "APTO", checks
+
+
+def run_like_report(raw):
+    """Como report(): la saturación no se cuenta durante el arranque."""
+    from soundloc.mic_test import STARTUP_S
+    return evaluate(analyze_step_test(to_float(raw), FS), clip_fraction(raw[int(STARTUP_S * FS):]))
+
+
+def test_a_brief_noise_is_not_taken_as_the_tone_onset():
+    y = 0.5 * generate_stimulus(FS)
+    y[int(1.5 * FS):int(1.8 * FS)] += 0.05 * np.random.default_rng(1).normal(size=int(0.3 * FS))
+    verdict, checks = run(record(y))
+    assert verdict == "APTO", checks
+
+
+def test_a_tone_only_11_db_above_the_room_is_measured_accurately():
+    # Tono A a −41 dBFS y sala a −52 dBFS: la resta del piso corrige el sesgo del ruido.
+    verdict, checks = run(record(10 ** (-11 / 20) * generate_stimulus(FS), floor_db=-52.0))
+    assert verdict == "APTO", checks
+
+
+def test_a_tone_buried_in_the_room_is_inconclusive():
+    verdict, _ = run(record(10 ** (-27 / 20) * generate_stimulus(FS), floor_db=-55.0))
+    assert verdict == "NO CONCLUYENTE"
+
+
+def test_a_gated_microphone_is_rejected():
+    """Imita al Steren: deja pasar el inicio de cada tono y luego lo corta a cero exacto."""
+    raw = record(0.5 * generate_stimulus(FS))
+    gated = np.zeros_like(raw)
+    for start_s in (4.0, 10.0):  # los inicios de A y B, con el silencio previo de 1 s
+        i = int(start_s * FS)
+        gated[i:i + FS] = raw[i:i + FS]
+    verdict, checks = run(gated)
+    assert verdict == "NO APTO"
+    assert "sin_compuerta" in {c["prueba"] for c in checks if not c["ok"]}

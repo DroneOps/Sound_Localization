@@ -108,12 +108,27 @@ def _to_float(value):
         return math.nan
 
 
+def read_wav_bytes(path):
+    """Lee un WAV de 16 bits aunque su encabezado no se haya terminado de escribir.
+
+    El módulo wave escribe el tamaño de los datos al cerrar el archivo. Si el programa se
+    interrumpió antes, el encabezado dice menos de lo que hay: se toma todo lo que sigue
+    al bloque 'data', recortado a un número entero de muestras.
+    """
+    with wave.open(str(path), "rb") as w:
+        fs, channels, declared = w.getframerate(), w.getnchannels(), w.getnframes()
+    blob = Path(path).read_bytes()
+    start = blob.find(b"data") + 8
+    frame = 2 * channels
+    available = (len(blob) - start) // frame
+    raw = blob[start:start + max(declared, available) * frame]
+    return fs, channels, raw[: len(raw) // frame * frame]
+
+
 def load_session(path):
     path = Path(path)
     meta = json.loads((path / META).read_text(encoding="utf-8"))
-    with wave.open(str(path / AUDIO), "rb") as w:
-        fs, channels = w.getframerate(), w.getnchannels()
-        raw = w.readframes(w.getnframes())
+    fs, channels, raw = read_wav_bytes(path / AUDIO)
     audio = np.frombuffer(raw, dtype="<i2").reshape(-1, channels)[:, 0].copy()
 
     with open(path / TIMESTAMPS, newline="") as fh:

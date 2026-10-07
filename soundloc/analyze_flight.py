@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from scipy.signal import spectrogram  # noqa: E402
 
+from .dsp import VOICE_BAND_HZ, bandpass  # noqa: E402
 from .levels import (clip_fraction, dbfs, dominant_peak_hz, power_mean_db,  # noqa: E402
                      short_time_levels, subtract_level, to_float)
 from .session import load_session  # noqa: E402
@@ -55,7 +56,7 @@ def _telemetry_stats(tel, ta, tb):
     return out
 
 
-def _segment_row(s, seg, t0, mic_height):
+def _segment_row(s, seg, t0, mic_height, x_all, x_band):
     ta, tb = _window(seg)
     row = {"etiqueta": seg["etiqueta"], "tipo": seg["tipo"],
            "distancia_nominal_m": seg["distancia_m"], "inicio_s": ta - t0, "fin_s": tb - t0}
@@ -65,8 +66,10 @@ def _segment_row(s, seg, t0, mic_height):
         row["nota"] = "ventana de medición demasiado corta"
         return row
     raw = s.audio[i0:i1]
-    x = to_float(raw)
+    x = x_all[i0:i1]
     row["nivel_dbfs"] = dbfs(x)
+    if x_band is not None:
+        row["nivel_banda_dbfs"] = dbfs(x_band[i0:i1])
     row["saturacion_pct"] = 100.0 * clip_fraction(raw)
     row.update(_telemetry_stats(s.telemetry, ta, tb))
     if seg["tipo"] == "hover":
@@ -122,14 +125,25 @@ def analyze(session_dir):
     s = load_session(session_dir)
     t0 = estimate_t0(s.chunk_frames, s.chunk_times, s.fs)
     mic_height = s.meta.get("microfono", {}).get("altura_m")
-    rows = [_segment_row(s, seg, t0, mic_height) for seg in s.segments]
+    x_all = to_float(s.audio)
+    # Se filtra la grabación completa y se recorta después (el filtro tiene memoria).
+    x_band = bandpass(x_all, s.fs) if s.fs / 2 > VOICE_BAND_HZ[1] else None
+    rows = [_segment_row(s, seg, t0, mic_height, x_all, x_band) for seg in s.segments]
 
-    ambient = [r["nivel_dbfs"] for r in rows if r["tipo"] == "ambiente" and "nivel_dbfs" in r]
+    ambient_rows = [r for r in rows if r["tipo"] == "ambiente" and "nivel_dbfs" in r]
+    ambient = [r["nivel_dbfs"] for r in ambient_rows]
     ambient_ref = power_mean_db(ambient) if ambient else float("nan")
+    ambient_band = [r["nivel_banda_dbfs"] for r in ambient_rows if "nivel_banda_dbfs" in r]
+    ambient_band_ref = power_mean_db(ambient_band) if ambient_band else float("nan")
     hovers = [r for r in rows if r["tipo"] == "hover" and "nivel_dbfs" in r]
     for r in hovers:
         # Lo que mide el micrófono es dron + habitación; restamos la habitación en potencia.
         r["nivel_dron_dbfs"] = subtract_level(r["nivel_dbfs"], ambient_ref) if ambient else r["nivel_dbfs"]
+        if "nivel_banda_dbfs" in r:
+            r["nivel_banda_dron_dbfs"] = (subtract_level(r["nivel_banda_dbfs"], ambient_band_ref)
+                                          if ambient_band else r["nivel_banda_dbfs"])
+            # Cuánta de la potencia del dron cae en la banda de voz, en dB (0 = toda).
+            r["fraccion_en_banda_db"] = r["nivel_banda_dron_dbfs"] - r["nivel_dron_dbfs"]
 
     summary = {
         "sesion": str(session_dir),
@@ -137,7 +151,9 @@ def analyze(session_dir):
         "duracion_s": len(s.audio) / s.fs,
         "deriva_reloj_ms": 1000 * clock_drift_s(s.chunk_frames, s.chunk_times, s.fs),
         "ambiente": {"niveles_dbfs": ambient, "referencia_dbfs": ambient_ref,
+                     "referencia_banda_dbfs": ambient_band_ref,
                      "cambio_db": ambient[-1] - ambient[0] if len(ambient) >= 2 else None},
+        "banda_hz": list(VOICE_BAND_HZ),
         "ajuste": _fit_inverse_square(hovers),
         "repetibilidad_db": _repeatability(hovers),
         "tramos": rows,
@@ -163,7 +179,7 @@ def print_report(summary):
         levels = ", ".join(f"{v:.1f}" for v in amb["niveles_dbfs"])
         print(f"Ambiente con motores apagados: {levels} dBFS"
               + (f" (cambio {amb['cambio_db']:+.1f} dB)" if amb["cambio_db"] is not None else ""))
-    print("\n  Tramo            Dist.  Altura  D.real  Nivel   Dron    Predic.  Dif.   Sat.%  Pico")
+    print("\n  Tramo            Dist.  Altura  D.real  Nivel   Dron    Predic.  Dif.  Banda  En banda  Sat.%  Pico")
     for r in summary["tramos"]:
         if r["tipo"] != "hover":
             continue
@@ -171,7 +187,10 @@ def print_report(summary):
               f"{_fmt(r.get('altura_m'), '.2f'):>6}  {_fmt(r.get('distancia_real_m'), '.2f'):>6}  "
               f"{_fmt(r.get('nivel_dbfs'), '.1f'):>6}  {_fmt(r.get('nivel_dron_dbfs'), '.1f'):>6}  "
               f"{_fmt(r.get('prediccion_dbfs'), '.1f'):>7}  {_fmt(r.get('diferencia_db'), '+.1f'):>5}  "
+              f"{_fmt(r.get('nivel_banda_dron_dbfs'), '.1f'):>5}  {_fmt(r.get('fraccion_en_banda_db'), '+.1f'):>8}  "
               f"{_fmt(r.get('saturacion_pct'), '.2f'):>5}  {_fmt(r.get('pico_hz'), '.0f')} Hz")
+    print(f"  Nivel: banda ancha. Dron: sin la habitación. Banda: dron en {VOICE_BAND_HZ[0]:g}–"
+          f"{VOICE_BAND_HZ[1]:g} Hz. En banda: cuánto de su potencia cae ahí (0 dB = toda).")
     fit = summary["ajuste"]
     if fit:
         print(f"\nPendiente medida: {fit['pendiente_db_por_duplicacion']:+.2f} dB cada vez que se "

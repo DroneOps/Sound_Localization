@@ -113,6 +113,14 @@ Uso, en este orden:
 
 # Volver a analizar una sesión ya grabada
 .venv/bin/python -m soundloc.analyze_flight sessions/<carpeta>
+
+# Si el Tello no acepta movimientos ("No valid imu"): un vuelo corto por distancia...
+.venv/bin/python -m soundloc.bench_flight --device hw:CARD=<id>,DEV=0 --start-distance 1.8 --plan 1.8 --max-distance 1.8
+# ...o vuelo con piloto: Q despega, E aterriza, números = marcar hover, ENTER = emergencia
+.venv/bin/python -m soundloc.manual_flight --device hw:CARD=<id>,DEV=0 --plan 1,1.8
+
+# Juntar varios vuelos
+.venv/bin/python -m soundloc.compare_sessions sessions/<vuelo_a> sessions/<vuelo_b>
 ```
 
 Durante el vuelo: **ENTER = paro de emergencia** (motores apagados), **Ctrl+C = aterrizaje
@@ -122,6 +130,7 @@ tramos y un `sesion.json` con la metadata.
 | Módulo | Qué hace |
 |---|---|
 | `soundloc/levels.py` | RMS, dBFS, saturación, suma y resta de niveles |
+| `soundloc/dsp.py` | Filtro pasa-banda de voz (Butterworth en secciones de segundo orden) |
 | `soundloc/recorder.py` | Grabación con `arecord` sobre `hw:`, con marcas de tiempo por bloque |
 | `soundloc/timing.py` | Sincronización del audio con el reloj de la computadora |
 | `soundloc/tello.py` | Cliente del SDK del Tello por UDP, sin reintentos |
@@ -129,13 +138,23 @@ tramos y un `sesion.json` con la metadata.
 | `soundloc/mic_test.py` | Prueba de linealidad y AGC del micrófono |
 | `soundloc/bench_flight.py` | Rutina de vuelo con verificaciones de seguridad |
 | `soundloc/analyze_flight.py` | Niveles por tramo, ley inversa del cuadrado, gráficas |
+| `soundloc/manual_flight.py` | Vuelo con piloto (teclas de `Mover.py`), con grabación y marcas de hover |
+| `soundloc/compare_sessions.py` | Junta varios vuelos (por ejemplo, uno por distancia) |
 
 Pruebas: `.venv/bin/python -m pytest`
 
 ## Estado
 
-Banco volante implementado y validado en simulación. Pendiente: prueba del micrófono Steren
-MOV-033 y primer vuelo real. Después: filtrado en banda y supresión de tonos de hélice.
+Primeras pruebas con hardware real (6 de octubre de 2026):
+
+- El micrófono Steren MOV-033 queda descartado: tiene supresión de ruido adaptativa con
+  compuerta (borra los sonidos constantes). Se usa el micrófono interno de la laptop.
+- Dos hovers del Tello a 1 m, en vuelos distintos, coinciden con 0.1 dB de diferencia. Con el
+  micrófono interno, sólo ~3.7 % de la potencia del Tello cae en la banda de voz (−15 dB).
+- Pendiente: el Tello deriva siempre hacia el mismo lado y rechaza movimientos ("No valid
+  imu"). Antes de volver a volar: revisar hélices y motores, calibrar la IMU en la app oficial
+  y probar con la app si obedece.
+- Siguiente en código: supresión de tonos de hélice (notch) y STFT/Welch.
 
 ## Regla de trabajo
 
