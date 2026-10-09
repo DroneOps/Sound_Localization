@@ -1,0 +1,50 @@
+{
+  "piso_dbfs": -236.9897000433602,
+  "inicio_tono_s": 4.3,
+  "segmentos": {
+    "A": {
+      "nivel_archivo_dbfs": -30.0,
+      "inicio_s": 4.3,
+      "temprano_bruto_dbfs": -71.0041525086788,
+      "tardio_bruto_dbfs": -236.9897000433602,
+      "temprano_dbfs": -71.0041525086788,
+      "tardio_dbfs": NaN,
+      "deriva_db": NaN
+    },
+    "B": {
+      "nivel_archivo_dbfs": -20.0,
+      "inicio_s": 10.3,
+      "temprano_bruto_dbfs": -64.64950619532442,
+      "tardio_bruto_dbfs": -69.27586574392693,
+      "temprano_dbfs": -64.64950619532442,
+      "tardio_dbfs": -69.27586574392693,
+      "deriva_db": -4.626359548602508
+    },
+    "A2": {
+      "nivel_archivo_dbfs": -30.0,
+      "inicio_s": 16.3,
+      "temprano_bruto_dbfs": -103.24039905724506,
+      "tardio_bruto_dbfs": -236.9897000433602,
+      "temprano_dbfs": -103.24039905724524,
+      "tardio_dbfs": NaN,
+      "deriva_db": NaN
+    }
+  },
+  "escalon_subida_db": NaN,
+  "escalon_bajada_db": NaN,
+  "repetibilidad_db": NaN,
+  "snr_tono_db": 0.0,
+  "veredicto": "NO APTO",
+  "pruebas": [
+    {
+      "prueba": "sin_saturacion",
+      "ok": true,
+      "detalle": "0.000 % de muestras en los extremos del ADC"
+    },
+    {
+      "prueba": "sin_compuerta",
+      "ok": false,
+      "detalle": "el piso es silencio digital (-237 dBFS): el micrófono apaga la señal cuando es débil, así que la cadena no es lineal"
+    }
+  ]
+}

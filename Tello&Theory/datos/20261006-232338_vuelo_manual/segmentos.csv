@@ -1,0 +1,5 @@
+etiqueta,tipo,t_inicio,t_fin,distancia_m,asentamiento_s
+ambiente_inicio,ambiente,17085.614265118,17088.725780339,,
+despegue,transicion,17088.725873494,17093.225798993,,
+aterrizaje,transicion,17164.959150004,17170.972774977,,
+ambiente_final,ambiente,17171.972774977,17183.294384847,,

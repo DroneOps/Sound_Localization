@@ -1,0 +1,4 @@
+etiqueta,tipo,t_inicio,t_fin,distancia_m,asentamiento_s
+ambiente_inicio,ambiente,13637.165380411,13647.165695116,,
+despegue,transicion,13647.165809611,13655.918413038,,
+hover1_1m,hover,13658.921460327,13670.965073605,1.0,2.0

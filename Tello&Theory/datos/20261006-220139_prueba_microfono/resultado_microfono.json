@@ -1,0 +1,50 @@
+{
+  "piso_dbfs": -51.635889589205306,
+  "inicio_tono_s": 0.0,
+  "segmentos": {
+    "A": {
+      "nivel_archivo_dbfs": -30.0,
+      "inicio_s": 0.0,
+      "temprano_bruto_dbfs": -37.469752659815775,
+      "tardio_bruto_dbfs": -51.82414650681858,
+      "temprano_dbfs": -37.63943120175877,
+      "tardio_dbfs": NaN,
+      "deriva_db": NaN
+    },
+    "B": {
+      "nivel_archivo_dbfs": -20.0,
+      "inicio_s": 6.0,
+      "temprano_bruto_dbfs": -52.41740843089522,
+      "tardio_bruto_dbfs": -49.11555978373365,
+      "temprano_dbfs": NaN,
+      "tardio_dbfs": NaN,
+      "deriva_db": NaN
+    },
+    "A2": {
+      "nivel_archivo_dbfs": -30.0,
+      "inicio_s": 12.0,
+      "temprano_bruto_dbfs": -47.71152827514477,
+      "tardio_bruto_dbfs": -51.319185408770764,
+      "temprano_dbfs": -49.967099654239505,
+      "tardio_dbfs": NaN,
+      "deriva_db": NaN
+    }
+  },
+  "escalon_subida_db": NaN,
+  "escalon_bajada_db": NaN,
+  "repetibilidad_db": NaN,
+  "snr_tono_db": -0.18825691761327334,
+  "veredicto": "NO CONCLUYENTE",
+  "pruebas": [
+    {
+      "prueba": "sin_saturacion",
+      "ok": true,
+      "detalle": "0.000 % de muestras en los extremos del ADC"
+    },
+    {
+      "prueba": "tono_sobre_ruido",
+      "ok": false,
+      "detalle": "el tono está sólo -0.2 dB sobre el ruido; hacen falta 10"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "piso_dbfs": -58.1248268598797,
+  "inicio_tono_s": 4.199999999999999,
+  "segmentos": {
+    "A": {
+      "nivel_archivo_dbfs": -30.0,
+      "inicio_s": 4.199999999999999,
+      "temprano_bruto_dbfs": -40.531107288238516,
+      "tardio_bruto_dbfs": -39.60236933003918,
+      "temprano_dbfs": -40.60735364457382,
+      "tardio_dbfs": -39.66383152185249,
+      "deriva_db": 0.9435221227213333
+    },
+    "B": {
+      "nivel_archivo_dbfs": -20.0,
+      "inicio_s": 10.2,
+      "temprano_bruto_dbfs": -31.024330108855636,
+      "tardio_bruto_dbfs": -30.654150227132966,
+      "temprano_dbfs": -31.032805472389224,
+      "tardio_dbfs": -30.661932486536223,
+      "deriva_db": 0.3708729858530013
+    },
+    "A2": {
+      "nivel_archivo_dbfs": -30.0,
+      "inicio_s": 16.2,
+      "temprano_bruto_dbfs": -40.534368808333596,
+      "tardio_bruto_dbfs": -39.55972348128813,
+      "temprano_dbfs": -40.610672952808436,
+      "tardio_dbfs": -39.620580866615015,
+      "deriva_db": 0.990092086193421
+    }
+  },
+  "escalon_subida_db": 9.001899035316264,
+  "escalon_bajada_db": -8.958648380078792,
+  "repetibilidad_db": 0.04325065523747185,
+  "snr_tono_db": 18.522457529840516,
+  "veredicto": "NO APTO",
+  "pruebas": [
+    {
+      "prueba": "sin_saturacion",
+      "ok": true,
+      "detalle": "0.000 % de muestras en los extremos del ADC"
+    },
+    {
+      "prueba": "tono_sobre_ruido",
+      "ok": true,
+      "detalle": "18.5 dB sobre el ruido de la habitación"
+    },
+    {
+      "prueba": "escalon_subida",
+      "ok": false,
+      "detalle": "medido +9.00 dB, esperado +10.00 dB"
+    },
+    {
+      "prueba": "escalon_bajada",
+      "ok": false,
+      "detalle": "medido -8.96 dB, esperado -10.00 dB"
+    },
+    {
+      "prueba": "nivel_estable",
+      "ok": false,
+      "detalle": "deriva máxima dentro de un tono: +0.99 dB (tono A2)"
+    },
+    {
+      "prueba": "repetibilidad",
+      "ok": true,
+      "detalle": "A2 − A = +0.04 dB"
+    },
+    {
+      "prueba": "sin_compuerta",
+      "ok": true,
+      "detalle": "piso de ruido -58.1 dBFS (un piso de silencio digital indicaría una compuerta o supresión de ruido)"
+    }
+  ]
+}

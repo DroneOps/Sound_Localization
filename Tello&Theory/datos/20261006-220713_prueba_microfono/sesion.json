@@ -1,0 +1,55 @@
+{
+  "tipo": "prueba_microfono",
+  "inicio": "2026-10-06T22:07:13",
+  "codigo": {
+    "commit": "4bbd374",
+    "con_cambios_sin_commit": true
+  },
+  "python": "3.12.3",
+  "microfono": {
+    "dispositivo": "hw:CARD=Audio,DEV=0",
+    "alsa": {
+      "tarjeta": "Audio",
+      "mezclador": "Simple mixer control 'PCM',0\n  Capabilities: pvolume pvolume-joined pswitch pswitch-joined\n  Playback channels: Mono\n  Limits: Playback 0 - 7023\n  Mono: Playback 2809 [40%] [-17.40dB] [on]\nSimple mixer control 'Mic',0\n  Capabilities: cvolume cvolume-joined cswitch cswitch-joined\n  Capture channels: Mono\n  Limits: Capture 0 - 7023\n  Mono: Capture 7023 [100%] [-0.94dB] [on]\n",
+      "agc": []
+    }
+  },
+  "audio": {
+    "fs": 48000,
+    "canales": 2,
+    "formato": "S16_LE",
+    "muestras": 1290000
+  },
+  "estimulo": {
+    "tono_hz": 1000.0,
+    "fs": 48000,
+    "tramos": [
+      {
+        "nombre": "silencio",
+        "duracion_s": 3.0,
+        "nivel_dbfs": null
+      },
+      {
+        "nombre": "A",
+        "duracion_s": 6.0,
+        "nivel_dbfs": -30.0
+      },
+      {
+        "nombre": "B",
+        "duracion_s": 6.0,
+        "nivel_dbfs": -20.0
+      },
+      {
+        "nombre": "A2",
+        "duracion_s": 6.0,
+        "nivel_dbfs": -30.0
+      },
+      {
+        "nombre": "silencio_final",
+        "duracion_s": 3.0,
+        "nivel_dbfs": null
+      }
+    ]
+  },
+  "fin": "2026-10-06T22:07:44"
+}
