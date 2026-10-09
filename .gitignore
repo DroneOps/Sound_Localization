@@ -19,3 +19,6 @@ data/raw/
 
 # Sesiones grabadas (datos crudos, se respaldan aparte)
 sessions/
+
+# Cachés de pruebas
+.pytest_cache/
