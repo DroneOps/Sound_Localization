@@ -24,7 +24,7 @@ class Recorder:
     """Lee audio crudo de un proceso (arecord o un simulador) y lo guarda en WAV."""
 
     def __init__(self, wav_path, timestamps_path, rate, channels=1, device=None,
-                 source_cmd=None, cwd=None, chunk_frames=1024):
+                 source_cmd=None, cwd=None, chunk_frames=1024, on_chunk=None):
         if source_cmd is None:
             if not device:
                 raise ValueError("Hace falta un dispositivo o un comando de fuente")
@@ -39,6 +39,7 @@ class Recorder:
         self.frame_bytes = 2 * channels
         self.frames = 0
         self.chunks = []  # (muestras acumuladas al final del bloque, hora de llegada)
+        self.on_chunk = on_chunk  # recibe los bytes de cada bloque, para quien analiza en vivo
         self._proc = None
         self._thread = None
         self._wav = None
@@ -71,6 +72,8 @@ class Recorder:
             leftover = data[usable:]
             if usable:
                 self._wav.writeframesraw(data[:usable])
+                if self.on_chunk is not None:
+                    self.on_chunk(data[:usable])
                 self.frames += usable // self.frame_bytes
                 self.chunks.append((self.frames, arrival))
 
