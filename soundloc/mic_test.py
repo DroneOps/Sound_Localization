@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 from .devices import mixer_report  # noqa: E402
+from .dsp import bandpass  # noqa: E402
 from .levels import clip_fraction, dbfs, short_time_levels, subtract_level, to_float  # noqa: E402
 from .recorder import Recorder, RecorderError  # noqa: E402
 from .session import PROJECT_ROOT, Session, load_session  # noqa: E402
@@ -86,7 +87,13 @@ def _sustained_onset(levels, threshold, hold, first=0):
     return None
 
 
-def analyze_step_test(x, fs, schedule=SCHEDULE, window_s=0.05):
+def analyze_step_test(x, fs, schedule=SCHEDULE, window_s=0.05, band=(TONE_HZ / 2, TONE_HZ * 2)):
+    # Se mide sólo la octava alrededor del tono. Hay micrófonos (el interno de una laptop, por
+    # ejemplo) con un desplazamiento de DC y un zumbido de la red en 60/120 Hz mucho más fuertes
+    # que el tono; en banda ancha lo tapan, aunque el tono se grabe perfectamente. Un AGC o una
+    # compuerta cambian la ganancia de toda la señal, así que se siguen viendo en esta banda.
+    if band is not None:
+        x = bandpass(x, fs, band)
     t, levels = short_time_levels(x, fs, window_s)
     quiet = (t >= STARTUP_S) & (t < 2.0)
     if not quiet.any():
